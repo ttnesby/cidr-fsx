@@ -26,11 +26,11 @@ let reportExitCode ec =
 type CIDRCreate =
 
     static member ``No network width must be Error `` () =
-        "10.0.0.0" |> CIDR.create |> shouldBeError ||
+        "10.0.0.0" |> CIDR.create |> shouldBeError &&
         "10.0.0.0/" |> CIDR.create |> shouldBeError
 
     static member ``Invalid network width must be Error `` () =
-        "10.0.0.0/500" |> CIDR.create |> shouldBeError ||
+        "10.0.0.0/500" |> CIDR.create |> shouldBeError &&
         "10.0.0.0/33" |> CIDR.create |> shouldBeError
 
     static member ``Valid CIDR must be Ok `` () =
@@ -83,13 +83,13 @@ type CIDROverlappingRanges =
 ALog.inf $"Test start: {fsi.CommandLineArgs.[0]} "
 [
     fun () ->
-        Check.All<CIDRCreate>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
+        Check.All<CIDRCreate>({ Config.QuickThrowOnFailure with MaxTest = 1; QuietOnSuccess=false })
     fun () ->
-        Check.All<CIDRIPv4StartIP>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
+        Check.All<CIDRIPv4StartIP>({ Config.QuickThrowOnFailure with MaxTest = 1; QuietOnSuccess=false })
     fun () ->
-        Check.All<CIDRIPv4EndIP>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
+        Check.All<CIDRIPv4EndIP>({ Config.QuickThrowOnFailure with MaxTest = 1; QuietOnSuccess=false })
     fun () ->
-        Check.All<CIDROverlappingRanges>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
+        Check.All<CIDROverlappingRanges>({ Config.QuickThrowOnFailure with MaxTest = 1; QuietOnSuccess=false })
 ]
 |> List.sumBy test2ExitCode
 |> reportExitCode
