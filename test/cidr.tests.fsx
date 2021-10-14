@@ -42,14 +42,14 @@ type CIDRCreate =
 type CIDRIPv4StartIP =
 
     static member ``Start IP for common CIDR ranges must be correct`` () =
-      "10.0.0.0/8" |>  CIDR.IPv4StartIP |> shouldBe "10.0.0.1" &&
-      "172.16.0.0/12" |>  CIDR.IPv4StartIP |> shouldBe "172.16.0.1" &&
-      "192.168.0.0/16" |>  CIDR.IPv4StartIP |> shouldBe "192.168.0.1" &&
-      "10.78.32.0/24" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.1"
+      "10.0.0.0/8" |>  CIDR.IPv4StartIP |> shouldBe "10.0.0.0" &&
+      "172.16.0.0/12" |>  CIDR.IPv4StartIP |> shouldBe "172.16.0.0" &&
+      "192.168.0.0/16" |>  CIDR.IPv4StartIP |> shouldBe "192.168.0.0" &&
+      "10.78.32.0/24" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.0"
 
     static member ``Start IP for smal CIDR ranges must be correct`` () =
-      "10.78.32.0/25" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.1" &&
-      "10.78.32.128/25" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.129"
+      "10.78.32.0/25" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.0" &&
+      "10.78.32.128/25" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.128"
 
 type CIDRIPv4EndIP =
 

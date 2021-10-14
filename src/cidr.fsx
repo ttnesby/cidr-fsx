@@ -50,8 +50,8 @@ module CIDR =
         cidr |> (toByteArray >> IPv4.toUInt >> add >> IPv4.toString)
 
     let IPv4StartIP s =
-        let addOne = ipV4Addx (fun ui -> ui + 1u)
-        s |> (create >> Result.map addOne)
+        let addZero = ipV4Addx id
+        s |> (create >> Result.map addZero)
 
     let IPv4EndIP s =
         let addHostRange cidr = ipV4Addx (fun ui -> ui + (toHostRange cidr)) cidr
