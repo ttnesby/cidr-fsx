@@ -8,6 +8,7 @@ open ClasslessInterDomainRouting
 
 let shouldBeError r = match r with | Error _-> true | Ok _ -> false
 let shouldBeOk r = match r with | Error _-> false | Ok _ -> true
+let shouldBe e r = match r with | Error _-> false | Ok ip -> ip = e
 
 let test2ExitCode (f: unit -> unit) = try f(); 0 with | _ -> 1
 
@@ -34,10 +35,38 @@ type CIDRCreate =
         "172.16.0.0/12" |> CIDR.create |> shouldBeOk &&
         "172.16.0.1/32" |> CIDR.create |> shouldBeOk
 
+type CIDRIPv4StartIP =
+
+    static member ``Start IP for common CIDR ranges must be correct`` () =
+      "10.0.0.0/8" |>  CIDR.IPv4StartIP |> shouldBe "10.0.0.1" &&
+      "172.16.0.0/12" |>  CIDR.IPv4StartIP |> shouldBe "172.16.0.1" &&
+      "192.168.0.0/16" |>  CIDR.IPv4StartIP |> shouldBe "192.168.0.1" &&
+      "10.78.32.0/24" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.1"
+
+    static member ``Start IP for smal CIDR ranges must be correct`` () =
+      "10.78.32.0/25" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.1" &&
+      "10.78.32.128/25" |>  CIDR.IPv4StartIP |> shouldBe "10.78.32.129"
+
+type CIDRIPv4EndIP =
+
+    static member ``End IP for common CIDR ranges must be correct`` () =
+      "10.0.0.0/8" |>  CIDR.IPv4EndIP |> shouldBe "10.255.255.255" &&
+      "172.16.0.0/12" |>  CIDR.IPv4EndIP |> shouldBe "172.31.255.255" &&
+      "192.168.0.0/16" |>  CIDR.IPv4EndIP |> shouldBe "192.168.255.255" &&
+      "10.78.32.0/24" |>  CIDR.IPv4EndIP |> shouldBe "10.78.32.255"
+
+    static member ``Start IP for smal CIDR ranges must be correct`` () =
+      "10.78.32.0/25" |>  CIDR.IPv4EndIP |> shouldBe "10.78.32.127" &&
+      "10.78.32.128/25" |>  CIDR.IPv4EndIP |> shouldBe "10.78.32.255"
+
 ALog.inf $"Test start: {fsi.CommandLineArgs.[0]} "
 [
     fun () ->
         Check.All<CIDRCreate>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
+    fun () ->
+        Check.All<CIDRIPv4StartIP>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
+    fun () ->
+        Check.All<CIDRIPv4EndIP>({ Config.QuickThrowOnFailure with MaxTest = 6; QuietOnSuccess=false })
 ]
 |> List.sumBy test2ExitCode
 |> reportExitCode

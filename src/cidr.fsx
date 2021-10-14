@@ -9,6 +9,25 @@ module CIDR =
     open System.Text.RegularExpressions
     open System.Net
 
+    module IPv4 = 
+
+        open System.Net
+
+        let toUInt (ba: byte array) = 
+            let toIPv4Bytes (ba: byte array) = (IPAddress ba).GetAddressBytes() 
+            let toUInt ba = System.BitConverter.ToUInt32(ba,0)
+            
+            ba |> (toIPv4Bytes >> Array.rev >> toUInt)
+            
+        let toString (i: uint) =
+            let toIPv4String (ba: byte array) = (IPAddress ba).ToString()
+
+            i |> (System.BitConverter.GetBytes >> Array.rev >> toIPv4String)
+
+
+        
+
+
     [<LiteralAttribute>]
     let Pattern = """^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/([0-9]{1,2})$"""
 
@@ -23,18 +42,35 @@ module CIDR =
 
     let private toByteArray (cidr:CIDR) = cidr.Value |> fun (a,b,c,d,_) -> [|a;b;c;d|]
 
-    let IPv4Addx x cidr =
-        let toIPv4Bytes (ba: byte array) = (IPAddress ba).MapToIPv4().GetAddressBytes()
-        let toIPv4String (ba: byte array) = (IPAddress ba).MapToIPv4().ToString()
+    let private toHostRange (cidr:CIDR) =
+        let nw (_,_,_,_,w) = 32 - (int w)
+        let p2 e = 2.0 ** e
+        let m1 x = x - 1.0
+        cidr.Value |> (nw >> float >> p2 >> m1 >> uint)
+
+    let private ipV4Addx x cidr =
+        let toIPv4Bytes (ba: byte array) = (IPAddress ba).GetAddressBytes()
+        let toIPv4String (ba: byte array) = (IPAddress ba).ToString()
         let adder (ba: byte array) =
             let add (ui:uint) = ui + x
-            let bConv ba = System.BitConverter.ToUInt32(ba,0)
+            let toUInt ba = System.BitConverter.ToUInt32(ba,0)
 
-            ba |> (Array.rev >> bConv >> add >> System.BitConverter.GetBytes >> Array.rev)
+            ba |> (Array.rev >> toUInt >> add >> System.BitConverter.GetBytes >> Array.rev)
 
         cidr |> (toByteArray >> toIPv4Bytes >> adder >> toIPv4String)
-    
-    let IPv4StartIP s = s |> (create >> Result.map (IPv4Addx 1u))
+
+    let IPv4StartIP s =
+        let addOne cidr = cidr |> (ipV4Addx 1u)
+        s |> (create >> Result.map addOne)
+
+    let IPv4EndIP s =
+        let addHostRange cidr = cidr |> (ipV4Addx (toHostRange cidr))
+        s |> (create >> Result.map addHostRange)
+
+    // let overlappingRanges r1 r2 =
+    //     let ipToUInt ip = IPAddress.Parse
+    //     let toTupleOfUInt r = (IPv4StartIP r, ) 
+    //     let rt1 = (IPv4StartIP r1, IPv4EndIP r1)
 
 
 
