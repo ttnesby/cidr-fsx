@@ -72,15 +72,13 @@ type CIDROverlappingRanges =
     static member ``order of overlapping ranges does not matter`` () =
         CIDR.overlappingRanges "192.168.1.0/24" "192.168.1.0/23" |> shouldBeTrue
 
-    // It 'returns True with partially overlapping ranges' {
-    //     Assert-OverlappingCidrRanges -CidrRange '192.168.1.0/26' -CidrRangeToCompare '192.168.1.32/27' | Should -BeTrue
-    // }
+    static member ``partial overlapping ranges must return true`` () =
+        CIDR.overlappingRanges "192.168.1.0/26" "192.168.1.32/27" |> shouldBeTrue
 
-    // It 'returns False for non-overlapping ranges' {
-    //     Assert-OverlappingCidrRanges -CidrRange '192.168.1.0/24' -CidrRangeToCompare '192.168.2.0/24' | Should -BeFalse
-    //     Assert-OverlappingCidrRanges -CidrRange '192.168.1.0/23' -CidrRangeToCompare '192.168.3.0/24' | Should -BeFalse
-    //     Assert-OverlappingCidrRanges -CidrRange '192.168.1.64/26' -CidrRangeToCompare '192.168.1.128/25' | Should -BeFalse
-    // }
+    static member ``non-overlapping ranges must return false`` () =
+        CIDR.overlappingRanges "192.168.1.0/24" "192.168.2.0/24" |> shouldBeFalse  &&
+        CIDR.overlappingRanges "192.168.1.0/23" "192.168.3.0/24" |> shouldBeFalse &&
+        CIDR.overlappingRanges "192.168.1.64/26" "192.168.1.128/25" |> shouldBeFalse
 
 ALog.inf $"Test start: {fsi.CommandLineArgs.[0]} "
 [

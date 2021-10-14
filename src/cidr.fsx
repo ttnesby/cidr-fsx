@@ -5,29 +5,29 @@ type CIDR = private CIDR of byte*byte*byte*byte*NetworkWidth with
     member this.Value = let (CIDR (a,b,c,d,nw)) = this in (a,b,c,d,nw)
 
 module CIDR =
-    
-    module IPv4 = 
+
+    module IPv4 =
 
         open System.Net
 
         let private baToUInt ba = System.BitConverter.ToUInt32(ba,0)
 
-        let toUInt (ba: byte array) = 
-            let toIPv4Bytes (ba: byte array) = (IPAddress ba).GetAddressBytes() 
+        let toUInt (ba: byte array) =
+            let toIPv4Bytes (ba: byte array) = (IPAddress ba).GetAddressBytes()
             ba |> (toIPv4Bytes >> Array.rev >> baToUInt)
-            
+
         let toString (ui: uint) =
             let toIPv4String (ba: byte array) = (IPAddress ba).ToString()
             ui |> (System.BitConverter.GetBytes >> Array.rev >> toIPv4String)
 
-        let strToUInt s = 
+        let strToUInt s =
             let toIPv4Bytes (s: string) = (IPAddress.Parse s).GetAddressBytes()
             s |> (toIPv4Bytes >> Array.rev >> baToUInt )
 
-    open System.Text.RegularExpressions            
-       
+    open System.Text.RegularExpressions
+
     [<LiteralAttribute>]
-    let Pattern = """^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/([0-9]{1,2})$"""
+    let private Pattern = """^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/([0-9]{1,2})$"""
 
     let private (|CIDR|_|) input =
         let m = Regex.Match(input, Pattern)
@@ -59,13 +59,9 @@ module CIDR =
 
     let overlappingRanges r1 r2 =
         let toUInt f r = r |> f |> Result.map IPv4.strToUInt
-        let rt1 = (toUInt IPv4StartIP r1, toUInt IPv4EndIP r1) 
+        let rt1 = (toUInt IPv4StartIP r1, toUInt IPv4EndIP r1)
         let rt2 = (toUInt IPv4StartIP r2, toUInt IPv4EndIP r2)
-        
+
         match (rt1,rt2) with
         | (Error _,_),_ | _,(Error _,_) -> Error "At least one CIDR is invalid"
         | (x1,x2),(y1,y2) ->  (x1 <= y2 && y1 <= x2) |> Ok
-
-
-
-
