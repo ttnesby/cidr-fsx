@@ -23,16 +23,18 @@ module CIDR =
 
     let private toByteArray (cidr:CIDR) = cidr.Value |> fun (a,b,c,d,_) -> [|a;b;c;d|]
 
-    let IPv4StartIP s =
+    let IPv4Addx x cidr =
         let toIPv4Bytes (ba: byte array) = (IPAddress ba).MapToIPv4().GetAddressBytes()
         let toIPv4String (ba: byte array) = (IPAddress ba).MapToIPv4().ToString()
-        let addOne (ba: byte array) =
-            let add1 ui = ui + 1u
+        let adder (ba: byte array) =
+            let add (ui:uint) = ui + x
             let bConv ba = System.BitConverter.ToUInt32(ba,0)
 
-            ba |> (Array.rev >> bConv >> add1 >> System.BitConverter.GetBytes >> Array.rev)
+            ba |> (Array.rev >> bConv >> add >> System.BitConverter.GetBytes >> Array.rev)
 
-        s |> (create >> Result.map (toByteArray >> toIPv4Bytes >> addOne >> toIPv4String))
+        cidr |> (toByteArray >> toIPv4Bytes >> adder >> toIPv4String)
+    
+    let IPv4StartIP s = s |> (create >> Result.map (IPv4Addx 1u))
 
 
 
