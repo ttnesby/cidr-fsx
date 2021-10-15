@@ -34,8 +34,10 @@ module CIDR =
         if m.Success then Some(List.tail [ for g in m.Groups -> g.Value ]) else None
 
     let create s =
+        let lt256 l = List.fold (fun acc e -> acc && (int e < 256)) true l
         match s with
-        | CIDR [a;b;c;d;ntwWidth] when (int ntwWidth) < 33 -> (byte a,byte b,byte c,byte d,byte ntwWidth) |> CIDR |> Ok
+        | CIDR [a;b;c;d;ntwWidth] when lt256 [a;b;c;d] && (int ntwWidth) < 33 -> 
+            (byte a,byte b,byte c,byte d,byte ntwWidth) |> CIDR |> Ok
         | _ -> Error $"{s} has invalid CIDR notation 'a.b.c.d/networkWidth'"
 
     let private toByteArray (cidr:CIDR) = cidr.Value |> fun (a,b,c,d,_) -> [|a;b;c;d|]
