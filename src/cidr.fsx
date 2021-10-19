@@ -13,12 +13,10 @@ module CIDR =
         open System.Net
 
         let private baToUInt ba = System.BitConverter.ToUInt32(ba,0)
+        let private toIPString (ba: byte array) = (IPAddress ba).ToString()
 
         let toUInt (ba: byte array) = ba |> (Array.rev >> baToUInt)
-
-        let toString (ui: uint32) =
-            let toIPv4String (ba: byte array) = (IPAddress ba).ToString()
-            ui |> (System.BitConverter.GetBytes >> Array.rev >> toIPv4String)
+        let toIPv4String (ui: uint32) = ui |> (System.BitConverter.GetBytes >> Array.rev >> toIPString)
 
     open System.Text.RegularExpressions
 
@@ -37,22 +35,36 @@ module CIDR =
         let m1 x = x - 1.0
         w |> (p2 >> m1 >> uint32)      
 
-    let asValue (cidr: CIDR) = cidr.Value      
 
     let private create s =
         let lt256 l = List.fold (fun acc e -> acc && (int e < 256)) true l
         match s with
         | CIDR [a;b;c;d;ntwWidth] when lt256 [a;b;c;d] && (byte ntwWidth) < 33uy ->
-            let fip = [|byte a;byte b;byte c;byte d|] |> Helpers.toUInt
-            (fip,fip + (ntwWidth |> toHostRange)) |> CIDR |> Ok
+
+            let fip = Helpers.toUInt [|byte a;byte b;byte c;byte d|] 
+            let hostRange = toHostRange ntwWidth
+
+            match hostRange with
+            | 0u -> (fip,fip) |> CIDR |> Ok
+            | n when fip + n > fip -> (fip, fip + n) |> CIDR |> Ok
+            | _ -> Error $"CIDR {s} is out of range"  
+
         | _ -> Error $"{s} has invalid CIDR notation 'a.b.c.d/networkWidth'"
 
-    let IPv4StartIP s = s |> (create >> Result.map (asValue >> fst >> Helpers.toString))
-    let IPv4EndIP s = s |> (create >> Result.map (asValue >> snd >> Helpers.toString))
+    let asValue (cidr: CIDR) = cidr.Value      
 
-    let overlappingRanges r1 r2 =
+    let IPv4StartIP s = s |> (create >> Result.map (asValue >> fst >> Helpers.toIPv4String))
+    let IPv4EndIP s = s |> (create >> Result.map (asValue >> snd >> Helpers.toIPv4String))
+
+    let IPv4Range s =
+        s |> create |> Result.map (fun cidr -> 
+            let (x1,x2) = cidr.Value 
+            (Helpers.toIPv4String x1, Helpers.toIPv4String x2)
+        )
+
+    let IPv4HasOverlap r1 r2 =
         match (create r1, create r2) with
-        | Error _, _ | _, Error _ -> Error "At least one CIDR is invalid"
+        | Error e, _ | _, Error e -> Error e
         | (Ok cidr1, Ok cidr2) ->  
             let (x1,x2) = cidr1.Value
             let (y1,y2) = cidr2.Value
