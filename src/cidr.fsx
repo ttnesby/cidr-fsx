@@ -1,12 +1,23 @@
 namespace ClasslessInterDomainRouting
 
-type IPFirstAsUInt = uint32
-type IPLastAsUInt = uint32
+type CIDRNotation = string
+type IPv4Format = string
 
-type CIDR = private CIDR of IPFirstAsUInt*IPLastAsUInt with
-    member this.Value = let (CIDR (f,l)) = this in (f,l)
+type CIDRError =
+    | InvalidNotation
+    | OutsideAddressRange
+
+type IPv4Range = CIDRNotation -> Result<IPv4Format * IPv4Format, CIDRError>
+type IPv4StartIP = CIDRNotation -> Result<IPv4Format, CIDRError>
+type IPv4EndIP = CIDRNotation -> Result<IPv4Format, CIDRError>
+type IPv4HasOverlap = CIDRNotation -> CIDRNotation -> Result<bool,CIDRError>
 
 module CIDR =
+
+    type CIDR = private CIDR of uint32 * uint32 with
+        member this.Value = let (CIDR (f,l)) = this in (f,l)
+        member this.X1 = fst this.Value
+        member this.X2 = snd this.Value
 
     module Helpers =
 
@@ -24,48 +35,39 @@ module CIDR =
     let private Pattern = """^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\/([0-9]{1,2})$"""
 
     let private (|CIDR|_|) input =
-        try 
+        try
             let m = Regex.Match(input, Pattern)
             if m.Success then Some(List.tail [ for g in m.Groups -> g.Value ]) else None
         with | _ -> None
 
     let private toHostRange (nw: string) =
-        let w = 32uy - (byte nw) |> float 
         let p2 e = 2.0 ** e
         let m1 x = x - 1.0
-        w |> (p2 >> m1 >> uint32)      
-
+        nw |> (byte >> ((-) 32uy) >> float >> p2 >> m1 >> uint32)
 
     let private create s =
         let lt256 l = List.fold (fun acc e -> acc && (int e < 256)) true l
         match s with
         | CIDR [a;b;c;d;ntwWidth] when lt256 [a;b;c;d] && (byte ntwWidth) < 33uy ->
 
-            let fip = Helpers.toUInt [|byte a;byte b;byte c;byte d|] 
+            let fip = Helpers.toUInt [|byte a;byte b;byte c;byte d|]
             let hostRange = toHostRange ntwWidth
 
             match hostRange with
             | 0u -> (fip,fip) |> CIDR |> Ok
             | n when fip + n > fip -> (fip, fip + n) |> CIDR |> Ok
-            | _ -> Error $"CIDR {s} is out of range"  
+            | _ -> Error OutsideAddressRange
 
-        | _ -> Error $"{s} has invalid CIDR notation 'a.b.c.d/networkWidth'"
+        | _ -> Error InvalidNotation
 
-    let asValue (cidr: CIDR) = cidr.Value      
+    let IPv4Range : IPv4Range= fun s ->
+        let toTuple (cidr: CIDR) = (Helpers.toIPv4String cidr.X1, Helpers.toIPv4String cidr.X2)
+        s |> (create >> Result.map toTuple)
 
-    let IPv4StartIP s = s |> (create >> Result.map (asValue >> fst >> Helpers.toIPv4String))
-    let IPv4EndIP s = s |> (create >> Result.map (asValue >> snd >> Helpers.toIPv4String))
+    let IPv4StartIP : IPv4StartIP = fun s -> s |> (IPv4Range >> Result.map fst)
+    let IPv4EndIP : IPv4EndIP = fun s -> s |> (IPv4Range >> Result.map snd)
 
-    let IPv4Range s =
-        s |> create |> Result.map (fun cidr -> 
-            let (x1,x2) = cidr.Value 
-            (Helpers.toIPv4String x1, Helpers.toIPv4String x2)
-        )
-
-    let IPv4HasOverlap r1 r2 =
-        match (create r1, create r2) with
+    let IPv4HasOverlap : IPv4HasOverlap = fun s1 s2 ->
+        match (create s1, create s2) with
         | Error e, _ | _, Error e -> Error e
-        | (Ok cidr1, Ok cidr2) ->  
-            let (x1,x2) = cidr1.Value
-            let (y1,y2) = cidr2.Value
-            (x1 <= y2 && y1 <= x2) |> Ok
+        | (Ok cidr1, Ok cidr2) ->  (cidr1.X1 <= cidr2.X2 && cidr2.X1 <= cidr1.X2) |> Ok
