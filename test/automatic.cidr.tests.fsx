@@ -26,6 +26,7 @@ type CIDR = CIDR of byte * byte * byte * byte * NetworkWidth with
 // assertions and helpers
 
 let shouldBeErrorType et (r: Result<_,CIDRError>) = r |> function | Error e when e = et -> true | _ -> false
+let shouldOverlap r = match r with | Error _-> false | Ok f -> f
 
 let test2ExitCode (f: unit -> unit) = try f(); 0 with | _ -> 1
 
@@ -49,10 +50,10 @@ type CIDRAPI =
 
         cidr.ToString() |> CIDR.IPv4Range
         |> function
-        | Ok (fip,lip) ->
+        | Ok ((fip,lip),_) ->
             let cidrFip = fip + "/32"
             let cidrLip = lip + "/32"
-            let folder acc (r1,r2) = acc && (CIDR.IPv4HasOverlap r1 r2 |> function | Error _ -> false | Ok v -> v)
+            let folder acc (r1,r2) = acc && (CIDR.IPv4HasOverlap r1 r2 |> shouldOverlap)
 
             [
                 (cidrFip,cidrUniverse)

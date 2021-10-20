@@ -2,22 +2,24 @@ namespace ClasslessInterDomainRouting
 
 type CIDRNotation = string
 type IPv4Format = string
+type SubnetMask = string
 
 type CIDRError =
     | InvalidNotation
     | OutsideAddressRange
 
-type IPv4Range = CIDRNotation -> Result<IPv4Format * IPv4Format, CIDRError>
+type IPv4Range = CIDRNotation -> Result<(IPv4Format * IPv4Format) * SubnetMask, CIDRError>
 type IPv4StartIP = CIDRNotation -> Result<IPv4Format, CIDRError>
 type IPv4EndIP = CIDRNotation -> Result<IPv4Format, CIDRError>
 type IPv4HasOverlap = CIDRNotation -> CIDRNotation -> Result<bool,CIDRError>
 
 module CIDR =
 
-    type CIDR = private CIDR of uint32 * uint32 with
-        member this.Value = let (CIDR (f,l)) = this in (f,l)
-        member this.X1 = fst this.Value
-        member this.X2 = snd this.Value
+    type CIDR = private CIDR of (uint32 * uint32) * uint32 with
+        member this.Value = let (CIDR ((f,l),m)) = this in ((f,l),m)
+        member this.X1 = (fst >> fst) this.Value
+        member this.X2 = (fst >> snd) this.Value
+        member this.M  = snd this.Value
 
     module Helpers =
 
@@ -54,18 +56,19 @@ module CIDR =
             let hostRange = toHostRange ntwWidth
 
             match hostRange with
-            | 0u -> (fip,fip) |> CIDR |> Ok
-            | n when fip + n > fip -> (fip, fip + n) |> CIDR |> Ok
+            | 0u -> ((fip,fip),System.UInt32.MaxValue) |> CIDR |> Ok
+            | n when fip + n > fip -> ((fip, fip + n),System.UInt32.MaxValue - n) |> CIDR |> Ok
             | _ -> Error OutsideAddressRange
 
         | _ -> Error InvalidNotation
 
-    let IPv4Range : IPv4Range= fun s ->
-        let toTuple (cidr: CIDR) = (Helpers.toIPv4String cidr.X1, Helpers.toIPv4String cidr.X2)
-        s |> (create >> Result.map toTuple)
+    let IPv4Range : IPv4Range = fun s ->
+        let toTuples (cidr: CIDR) =
+            ((Helpers.toIPv4String cidr.X1, Helpers.toIPv4String cidr.X2),Helpers.toIPv4String cidr.M)
+        s |> (create >> Result.map toTuples)
 
-    let IPv4StartIP : IPv4StartIP = fun s -> s |> (IPv4Range >> Result.map fst)
-    let IPv4EndIP : IPv4EndIP = fun s -> s |> (IPv4Range >> Result.map snd)
+    let IPv4StartIP : IPv4StartIP = fun s -> s |> (IPv4Range >> Result.map (fst >> fst))
+    let IPv4EndIP : IPv4EndIP = fun s -> s |> (IPv4Range >> Result.map (fst >> snd))
 
     let IPv4HasOverlap : IPv4HasOverlap = fun s1 s2 ->
         match (create s1, create s2) with
