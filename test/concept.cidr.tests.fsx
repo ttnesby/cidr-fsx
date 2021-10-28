@@ -1,3 +1,4 @@
+#!/usr/bin/env -S dotnet fsi
 #load @"./../.paket/load/FsCheck.fsx"
 #load @"./../src/aLogger.fsx"
 #load @"./../src/cidr.fsx"
